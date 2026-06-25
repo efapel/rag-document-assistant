@@ -1,29 +1,39 @@
-from fastapi import FastAPI
-from enum import Enum
+from fastapi import FastAPI,HTTPException
+
+from app import schemas
+
 
 app=FastAPI()
 
-class ModelName(str, Enum):
-    alexnet = "alexnet"
-    resnet = "resnet"
-    lenet = "lenet"
+documents_db:dict[int,dict]={}
+counter=0
 
-@app.get("/item/{item_id}")
-async def read_item(item_id:int):
-    return {"item id": item_id}
+@app.get("/health")
+async def health_check():
+    return {"status":"ok", "message":"AcademiQ is running"}
 
-@app.get("/models/{model_name}")
-async def get_model(model_name: ModelName):
+@app.post("/documents",response_model=schemas.DocumentResponse,status_code=201)
+async def create_document(doc:schemas.DocumentCreate):
+    #TODO after db codes added id will be given automatically
+    global counter
+    counter += 1
+    document={"id":counter,"title":doc.title,"content":doc.content}
+    documents_db[counter]=document
+    return document
 
-    if model_name is ModelName.alexnet:
-        return {"model_name": model_name, "message": "Deep Learning FTW!"}
+@app.get("/documents",response_model=list[schemas.DocumentResponse])
+async def list_documents():
+    return list(documents_db.values())
 
-    if model_name is ModelName.lenet:
-        return {"model_name": model_name, "message": "LeCNN all the images"}
+@app.get("/documents/{document_id}",response_model=schemas.DocumentResponse)
+async def get_document(document_id:int):
+    if document_id not in documents_db:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return documents_db[document_id]
 
-    return {"model_name": model_name, "message": "Have some residuals"}
-
-@app.get("/files/{file_path:path}")
-async def read_file(file_path:str):
-    return {"file_path":file_path}
-
+@app.delete("/documents/{document_id}")
+async def delete_document(document_id:int):
+    if document_id not in documents_db:
+        raise HTTPException(status_code=404, detail="Document not found")
+    del documents_db[document_id]
+    return {"message": "Document deleted"}
