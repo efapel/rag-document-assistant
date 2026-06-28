@@ -1,39 +1,51 @@
-from fastapi import FastAPI,HTTPException
+from fastapi import FastAPI,HTTPException,Depends
+from sqlmodel import Session,select
 
 from app import schemas
+from app import models
+from app import database
+
+
 
 
 app=FastAPI()
 
-documents_db:dict[int,dict]={}
-counter=0
+
+
+@app.on_event("startup")
+def on_startup():
+    database.create_tables()
 
 @app.get("/health")
 async def health_check():
     return {"status":"ok", "message":"AcademiQ is running"}
 
 @app.post("/documents",response_model=schemas.DocumentResponse,status_code=201)
-async def create_document(doc:schemas.DocumentCreate):
-    #TODO after db codes added id will be given automatically
-    global counter
-    counter += 1
-    document={"id":counter,"title":doc.title,"content":doc.content}
-    documents_db[counter]=document
+def create_document(doc:schemas.DocumentCreate,session:Session=Depends(database.get_session)):
+    document=models.Document(title=doc.title,content=doc.content)
+    session.add(document)
+    session.commit()
+    session.refresh(document)
+
     return document
 
 @app.get("/documents",response_model=list[schemas.DocumentResponse])
-async def list_documents():
-    return list(documents_db.values())
+def list_documents(session:Session=Depends(database.get_session)):
+    documents = session.exec(select(models.Document)).all()
+    return documents
 
 @app.get("/documents/{document_id}",response_model=schemas.DocumentResponse)
-async def get_document(document_id:int):
-    if document_id not in documents_db:
+def get_document(document_id:int,session:Session=Depends(database.get_session)):
+    document=session.get(models.Document,document_id)
+    if not document:
         raise HTTPException(status_code=404, detail="Document not found")
-    return documents_db[document_id]
+    return document
 
 @app.delete("/documents/{document_id}")
-async def delete_document(document_id:int):
-    if document_id not in documents_db:
+def delete_document(document_id:int,session:Session=Depends(database.get_session)):
+    document=session.get(models.Document,document_id)
+    if not document:
         raise HTTPException(status_code=404, detail="Document not found")
-    del documents_db[document_id]
+    session.delete(document)
+    session.commit()
     return {"message": "Document deleted"}
