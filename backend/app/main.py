@@ -1,5 +1,6 @@
-from fastapi import FastAPI,HTTPException,Depends
+from fastapi import FastAPI,HTTPException,Depends, UploadFile, File
 from sqlmodel import Session,select
+import fitz
 
 from app import schemas
 from app import models
@@ -23,6 +24,29 @@ async def health_check():
 @app.post("/documents",response_model=schemas.DocumentResponse,status_code=201)
 def create_document(doc:schemas.DocumentCreate,session:Session=Depends(database.get_session)):
     document=models.Document(title=doc.title,content=doc.content)
+    session.add(document)
+    session.commit()
+    session.refresh(document)
+
+    return document
+
+@app.post("/documents/upload",response_model=schemas.DocumentResponse, status_code=201)
+def upload_document(file: UploadFile = File(...), session: Session = Depends(database.get_session)):
+
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are accepted")
+
+    pdf_bytes = file.file.read()
+    pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
+
+    text = ""   
+    for page in pdf_document:
+        text += page.get_text()
+
+    if not text.strip():
+        raise HTTPException(status_code=400, detail="Could not extract text from PDF")
+
+    document = models.Document(title=file.filename, content=text)
     session.add(document)
     session.commit()
     session.refresh(document)
