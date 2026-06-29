@@ -6,6 +6,7 @@ from app import schemas
 from app import models
 from app import database
 
+from app.services.ai import answer_question_with_context
 
 
 
@@ -52,6 +53,20 @@ def upload_document(file: UploadFile = File(...), session: Session = Depends(dat
     session.refresh(document)
 
     return document
+
+@app.post("/ask", response_model=schemas.AnswerResponse)
+def ask_question(req: schemas.QuestionRequest, session: Session = Depends(database.get_session)):
+    document = session.get(models.Document, req.document_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    answer = answer_question_with_context(question=req.question, context=document.content)
+
+    return {
+        "answer": answer,
+        "document_id": document.id,
+        "document_title": document.title
+    }
 
 @app.get("/documents",response_model=list[schemas.DocumentResponse])
 def list_documents(session:Session=Depends(database.get_session)):
