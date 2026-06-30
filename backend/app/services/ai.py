@@ -22,3 +22,13 @@ def answer_question_with_context(question: str, context: str) -> str:
         ]
     )
     return response.choices[0].message.content
+
+def embed_text(text: str) -> list[float]:
+    """Convert text into a 1536-dimensional embedding vector."""
+    response = client.embeddings.create(
+        model="text-embedding-3-small",
+        input=text
+    )
+    #text-embedding-3-small --> 1536 dimension
+    #text-embedding-3-large -->3072 dimension
+    return response.data[0].embedding
