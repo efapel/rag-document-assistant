@@ -13,7 +13,22 @@ SYSTEM_PROMPT = (
 )
 
 
-def answer_question_with_context(question: str, context: str) -> str:
+def answer_question_with_context(question: str, chunks: list[str]) -> str:
+
+    """Generate an answer using semantically retrieved chunks as context.
+
+    Args:
+        question: User's question to answer.
+        chunks: Relevant text chunks retrieved from ChromaDB.
+
+    Returns:
+        LLM-generated answer based solely on the provided chunks.
+    """
+    # Format chunks with numbering so LLM can reference them
+    context = "\n\n---\n\n".join(
+        f"[Chunk {i + 1}]:\n{chunk}" for i, chunk in enumerate(chunks)
+    )
+
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
