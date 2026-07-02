@@ -71,7 +71,7 @@ def ask_question(req: schemas.QuestionRequest, session: Session = Depends(databa
     if not relevant_chunks:
         raise HTTPException(status_code=422, detail="Chunks not found")
 
-    answer = answer_question_with_context(question=req.question, context=relevant_chunks)
+    answer = answer_question_with_context(question=req.question, chunks=relevant_chunks)
 
     return {
         "answer": answer,
