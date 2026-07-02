@@ -18,3 +18,4 @@ class AnswerResponse(BaseModel):
     answer: str
     document_id: int
     document_title: str
+    source_chunks: list[str]
