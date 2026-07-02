@@ -7,7 +7,8 @@ from app import models
 from app import database
 
 from app.services.ai import answer_question_with_context
-
+from app.services.ingestion import chunk_text
+from app.services import vector_store
 
 
 app=FastAPI()
@@ -48,9 +49,14 @@ def upload_document(file: UploadFile = File(...), session: Session = Depends(dat
         raise HTTPException(status_code=400, detail="Could not extract text from PDF")
 
     document = models.Document(title=file.filename, content=text)
+    # Save full text to PostgreSQL for reference
     session.add(document)
     session.commit()
     session.refresh(document)
+
+    # Chunk and embed into ChromaDB for semantic search
+    chunks=chunk_text(document)
+    vector_store.add_document_chunks(document_id=document.id,chunks=chunks)
 
     return document
 
@@ -58,14 +64,20 @@ def upload_document(file: UploadFile = File(...), session: Session = Depends(dat
 def ask_question(req: schemas.QuestionRequest, session: Session = Depends(database.get_session)):
     document = session.get(models.Document, req.document_id)
     if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise HTTPException(status_code=404, detail="No indexed content found for this document. Please re-upload the PDF.")
 
-    answer = answer_question_with_context(question=req.question, context=document.content)
+    relevant_chunks=vector_store.query_similar_chunks(document_id=req.document_id,question=req.question)
+
+    if not relevant_chunks:
+        raise HTTPException(status_code=422, detail="Chunks not found")
+
+    answer = answer_question_with_context(question=req.question, context=relevant_chunks)
 
     return {
         "answer": answer,
         "document_id": document.id,
-        "document_title": document.title
+        "document_title": document.title,
+        "relevant chuks":relevant_chunks
     }
 
 @app.get("/documents",response_model=list[schemas.DocumentResponse])
@@ -85,6 +97,7 @@ def delete_document(document_id:int,session:Session=Depends(database.get_session
     document=session.get(models.Document,document_id)
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
+    vector_store.delete_document_chunks(document_id=document_id)
     session.delete(document)
     session.commit()
     return {"message": "Document deleted"}
