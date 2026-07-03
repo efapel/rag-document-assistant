@@ -77,7 +77,7 @@ def ask_question(req: schemas.QuestionRequest, session: Session = Depends(databa
         "answer": answer,
         "document_id": document.id,
         "document_title": document.title,
-        "relevant chuks":relevant_chunks
+        "source_chunks":relevant_chunks
     }
 
 @app.get("/documents",response_model=list[schemas.DocumentResponse])
