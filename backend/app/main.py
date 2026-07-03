@@ -55,7 +55,7 @@ def upload_document(file: UploadFile = File(...), session: Session = Depends(dat
     session.refresh(document)
 
     # Chunk and embed into ChromaDB for semantic search
-    chunks=chunk_text(document)
+    chunks=chunk_text(text=text)
     vector_store.add_document_chunks(document_id=document.id,chunks=chunks)
 
     return document
