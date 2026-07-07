@@ -13,7 +13,7 @@ SYSTEM_PROMPT = (
 )
 
 
-def answer_question_with_context(question: str, chunks: list[str]) -> str:
+def answer_question_with_context(question: str, chunks: list[dict]) -> str:
 
     """Generate an answer using semantically retrieved chunks as context.
 
