@@ -31,7 +31,7 @@ def add_document_chunks(document_id: int, chunks: list[str]) -> None:
         metadatas=metadatas
     )
 
-def query_similar_chunks(document_id: int, question: str, top_k: int = 5) -> list[str]:
+def query_similar_chunks(document_id: int, question: str, top_k: int = 5) -> list[dict]:
     """Retrieve the most semantically similar chunks for a question.
 
     Args:
@@ -60,7 +60,18 @@ def query_similar_chunks(document_id: int, question: str, top_k: int = 5) -> lis
         where={"document_id": {"$eq": document_id}}
     )
 
-    return results["documents"][0]
+    documents = results["documents"][0]
+    distances = results["distances"][0]
+    metadatas = results["metadatas"][0]
+
+    return [
+        {
+            "text": doc,
+            "chunk_index": meta["chunk_index"],
+            "similarity_score": round(1 - dist, 4)
+        }
+        for doc, dist, meta in zip(documents, distances, metadatas)
+    ]
 
 def delete_document_chunks(document_id: int) -> None:
     """Delete all chunks belonging to a document from ChromaDB."""
