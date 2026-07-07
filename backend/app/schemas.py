@@ -14,8 +14,13 @@ class QuestionRequest(BaseModel):
     question: str
     document_id: int
 
+class SourceChunks(BaseModel):
+    text:str
+    chunk_index:int
+    similarity_score:float
+
 class AnswerResponse(BaseModel):
     answer: str
     document_id: int
     document_title: str
-    source_chunks: list[str]
+    source_chunks: list[SourceChunks]
