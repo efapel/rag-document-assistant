@@ -26,7 +26,7 @@ def answer_question_with_context(question: str, chunks: list[dict]) -> str:
     """
     # Format chunks with numbering so LLM can reference them
     context = "\n\n---\n\n".join(
-        f"[Chunk {i + 1}]:\n{chunk}" for i, chunk in enumerate(chunks)
+       f"[Chunk {i + 1}]:\n{chunk['text']}" for i, chunk in enumerate(chunks)
     )
 
     response = client.chat.completions.create(
