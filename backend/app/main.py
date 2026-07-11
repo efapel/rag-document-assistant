@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
 from app import database
-from app.routers import documents
+from app.routers import documents, auth
 
 app = FastAPI(title="AcademiQ")
 
@@ -17,3 +17,4 @@ async def health_check():
 
 
 app.include_router(documents.router)
+app.include_router(auth.router)
