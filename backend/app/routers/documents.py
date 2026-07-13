@@ -78,8 +78,31 @@ def ask_question(
             status_code=422,
             detail="No indexed content found for this document. Please re-upload the PDF.",
         )
+    
+    # Fetch the last 3 turns for this user and document, oldest first
+    recent = session.exec(
+        select(models.Conversation)
+        .where(models.Conversation.user_id == user.id)
+        .where(models.Conversation.document_id == req.document_id)
+        .order_by(models.Conversation.created_at.desc())
+        .limit(3)
+    ).all()
+    
+    history = [
+    {"question": c.question, "answer": c.answer}
+    for c in reversed(recent)
+    ]
 
-    answer = answer_question_with_context(question=req.question, chunks=relevant_chunks)
+    answer = answer_question_with_context(question=req.question, chunks=relevant_chunks,history=history)
+
+     # Persist this turn so it becomes context for the next question
+    session.add(models.Conversation(
+        user_id=user.id,
+        document_id=req.document_id,
+        question=req.question,
+        answer=answer,
+    ))
+    session.commit()
 
     return {
         "answer": answer,

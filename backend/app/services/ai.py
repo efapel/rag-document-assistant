@@ -13,7 +13,11 @@ SYSTEM_PROMPT = (
 )
 
 
-def answer_question_with_context(question: str, chunks: list[dict]) -> str:
+def answer_question_with_context(
+    question: str, 
+    chunks: list[dict],
+    history: list[dict] | None = None
+    ) -> str:
 
     """Generate an answer using semantically retrieved chunks as context.
 
@@ -29,12 +33,21 @@ def answer_question_with_context(question: str, chunks: list[dict]) -> str:
        f"[Chunk {i + 1}]:\n{chunk['text']}" for i, chunk in enumerate(chunks)
     )
 
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+    # Replay previous turns so the model can resolve pronouns and follow-ups
+    for turn in history or []:
+        messages.append({"role": "user", "content": turn["question"]})
+        messages.append({"role": "assistant", "content": turn["answer"]})
+
+    messages.append({
+        "role": "user",
+        "content": f"Context:\n{context}\n\nQuestion:\n{question}",
+    })
+
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Context:\n{context}\n\nQuestion:\n{question}"}
-        ]
+        messages=messages,
     )
     return response.choices[0].message.content
 
