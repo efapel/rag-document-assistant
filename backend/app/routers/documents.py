@@ -8,6 +8,7 @@ from app import database
 from app.services.ai import answer_question_with_context
 from app.services.ingestion import chunk_text
 from app.services import vector_store
+from app.services.auth import get_current_user
 
 router = APIRouter(tags=["documents"])
 
@@ -15,9 +16,10 @@ router = APIRouter(tags=["documents"])
 @router.post("/documents", response_model=schemas.DocumentResponse, status_code=201)
 def create_document(
     doc: schemas.DocumentCreate,
+    user:models.User=Depends(get_current_user),
     session: Session = Depends(database.get_session),
 ):
-    document = models.Document(title=doc.title, content=doc.content)
+    document = models.Document(title=doc.title, content=doc.content,user_id=user.id)
     session.add(document)
     session.commit()
     session.refresh(document)
@@ -27,6 +29,7 @@ def create_document(
 @router.post("/documents/upload", response_model=schemas.DocumentResponse, status_code=201)
 def upload_document(
     file: UploadFile = File(...),
+    user:models.User=Depends(get_current_user),
     session: Session = Depends(database.get_session),
 ):
     if not file.filename.endswith(".pdf"):
@@ -43,7 +46,7 @@ def upload_document(
         raise HTTPException(status_code=400, detail="Could not extract text from PDF")
 
     # Save full text to PostgreSQL as source of truth
-    document = models.Document(title=file.filename, content=text)
+    document = models.Document(title=file.filename, content=text,user_id=user.id)
     session.add(document)
     session.commit()
     session.refresh(document)
@@ -58,10 +61,11 @@ def upload_document(
 @router.post("/ask", response_model=schemas.AnswerResponse)
 def ask_question(
     req: schemas.QuestionRequest,
+    user:models.User=Depends(get_current_user),
     session: Session = Depends(database.get_session),
 ):
     document = session.get(models.Document, req.document_id)
-    if not document:
+    if not document or document.user_id !=user.id:
         raise HTTPException(status_code=404, detail="Document not found")
 
     relevant_chunks = vector_store.query_similar_chunks(
@@ -86,23 +90,33 @@ def ask_question(
 
 
 @router.get("/documents", response_model=list[schemas.DocumentResponse])
-def list_documents(session: Session = Depends(database.get_session)):
-    documents = session.exec(select(models.Document)).all()
+def list_documents(
+    session: Session = Depends(database.get_session),
+    user: models.User = Depends(get_current_user)
+):
+    documents = session.exec(select(models.Document).where(models.Document.user_id==user.id)).all()
     return documents
 
 
 @router.get("/documents/{document_id}", response_model=schemas.DocumentResponse)
-def get_document(document_id: int, session: Session = Depends(database.get_session)):
+def get_document(
+    document_id: int, 
+    user: models.User = Depends(get_current_user),
+    session: Session = Depends(database.get_session)
+):
     document = session.get(models.Document, document_id)
-    if not document:
+    if not document or document.user_id != user.id:
         raise HTTPException(status_code=404, detail="Document not found")
     return document
 
 
 @router.delete("/documents/{document_id}")
-def delete_document(document_id: int, session: Session = Depends(database.get_session)):
+def delete_document(
+    document_id: int,
+    user:models.User = Depends(get_current_user),
+    session: Session = Depends(database.get_session)):
     document = session.get(models.Document, document_id)
-    if not document:
+    if not document or document.user_id != user.id:
         raise HTTPException(status_code=404, detail="Document not found")
 
     # Delete chunks from ChromaDB before removing the document row

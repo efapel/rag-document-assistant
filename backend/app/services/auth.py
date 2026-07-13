@@ -3,13 +3,20 @@ import os
 
 import bcrypt
 from dotenv import load_dotenv
+from fastapi import Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
+from sqlmodel import Session
+
+from app import models
+from app import database
 
 load_dotenv()
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 TOKEN_EXPIRE_MINUTES = 60
+_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
 
 def hash_password(password: str) -> str:
@@ -42,3 +49,22 @@ def decode_access_token(token: str) -> int | None:
         return int(user_id) if user_id else None
     except (JWTError, ValueError):
         return None
+
+def get_current_user(
+    token: str = Depends(_oauth2_scheme),
+    session: Session = Depends(database.get_session),
+) -> models.User:
+    """Resolve the authenticated user from the request's bearer token.
+
+    Raises:
+        HTTPException: 401 if the token is invalid or the user no longer exists.
+    """
+    user_id = decode_access_token(token)
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    user = session.get(models.User, user_id)
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    return user
