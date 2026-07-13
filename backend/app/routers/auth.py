@@ -5,6 +5,7 @@ from app import schemas
 from app import models
 from app import database
 from app.services import auth as auth_service
+from fastapi.security import OAuth2PasswordRequestForm
 
 router = APIRouter(tags=["auth"])
 
@@ -33,15 +34,15 @@ def register(
 
 @router.post("/login", response_model=schemas.Token)
 def login(
-    credentials: schemas.UserCreate,
+    form_data: OAuth2PasswordRequestForm = Depends(),
     session: Session = Depends(database.get_session),
 ):
     user = session.exec(
-        select(models.User).where(models.User.email == credentials.email)
+        select(models.User).where(models.User.email == form_data.username)
     ).first()
 
     if not user or not auth_service.verify_password(
-        credentials.password, user.hashed_password
+        form_data.password, user.hashed_password
     ):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
