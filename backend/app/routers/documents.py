@@ -23,6 +23,11 @@ def create_document(
     session.add(document)
     session.commit()
     session.refresh(document)
+    
+    # Chunk and embed into ChromaDB for semantic search
+    chunks = chunk_text(text=doc.content)
+    vector_store.add_document_chunks(document_id=document.id, chunks=chunks)
+
     return document
 
 
