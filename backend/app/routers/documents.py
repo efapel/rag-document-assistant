@@ -41,11 +41,23 @@ def upload_document(
         raise HTTPException(status_code=400, detail="Only PDF files are accepted")
 
     pdf_bytes = file.file.read()
-    pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
+    try:
+        pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="The uploaded PDF is invalid or could not be opened.",
+        ) from exc
 
-    text = ""
-    for page in pdf_document:
-        text += page.get_text()
+    try:
+        text = ""
+        for page in pdf_document:
+            text += page.get_text()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="Text could not be extracted from the uploaded PDF.",
+        ) from exc
 
     if not text.strip():
         raise HTTPException(status_code=400, detail="Could not extract text from PDF")
@@ -56,9 +68,17 @@ def upload_document(
     session.commit()
     session.refresh(document)
 
-    # Chunk and embed into ChromaDB for semantic search
-    chunks = chunk_text(text=text)
-    vector_store.add_document_chunks(document_id=document.id, chunks=chunks)
+    try:
+        # Chunk and embed into ChromaDB for semantic search
+        chunks = chunk_text(text=text)
+        vector_store.add_document_chunks(document_id=document.id, chunks=chunks)
+    except Exception as exc:
+        session.delete(document)
+        session.commit()
+        raise HTTPException(
+            status_code=502,
+            detail="Document was uploaded, but indexing failed. Please try again.",
+        ) from exc
 
     return document
 
