@@ -167,6 +167,14 @@ def delete_document(
     if not document or document.user_id != user.id:
         raise HTTPException(status_code=404, detail="Document not found")
 
+    conversations = session.exec(
+        select(models.Conversation)
+        .where(models.Conversation.user_id == user.id)
+        .where(models.Conversation.document_id == document_id)
+    ).all()
+    for conversation in conversations:
+        session.delete(conversation)
+
     # Delete chunks from ChromaDB before removing the document row
     vector_store.delete_document_chunks(document_id=document_id)
     session.delete(document)
