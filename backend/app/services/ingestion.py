@@ -47,7 +47,7 @@ def chunk_text(text: str, strategy: str = "sentence") -> list[str]:
         ValueError: If the strategy is not recognized.
     """
     if strategy == "sentence":
-        return _chunk_by_sentences(text, chunk_size=5, overlap=1)
+        return _chunk_by_sentences(text, chunk_size=10, overlap=1)
     if strategy == "char":
         return _chunk_by_chars(text, chunk_size=500, overlap=50)
     raise ValueError(f"Unknown chunking strategy: {strategy}")
