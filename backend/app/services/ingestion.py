@@ -7,9 +7,20 @@ def sigmoid(x: float) -> float:
     return 1 / (1 + np.exp(-x))
 
 def _split_into_sentences(text: str) -> list[str]:
-    """Split text into sentences using punctuation boundaries."""
-    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
-    return [s.strip() for s in sentences if s.strip()]
+    """Clean PDF artifacts and split text into normalized sentences."""
+    if not text:
+        return []
+
+    cleaned = re.sub(r'(\w+)-\n(\w+)', r'\1\2', text)
+
+    cleaned = re.sub(r'\n\s*\n+', '.\n', cleaned)
+
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+
+    sentences = re.split(r'(?<=[.!?])\s+(?=[A-Z"“0-9])', cleaned)
+
+    # 5. Çok kısa gürültüleri (tek harf, boşluk veya salt sembol) filtrele
+    return [s.strip() for s in sentences if len(s.strip()) > 3]
 
 
 def _chunk_by_sentences(text: str, chunk_size: int, overlap: int) -> list[str]:
