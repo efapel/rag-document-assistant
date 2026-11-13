@@ -1,10 +1,4 @@
-from openai import OpenAI
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+from app.rag.client import client
 
 SYSTEM_PROMPT = (
     "You are an academic assistant. "
@@ -14,23 +8,23 @@ SYSTEM_PROMPT = (
 
 
 def answer_question_with_context(
-    question: str, 
+    question: str,
     chunks: list[dict],
-    history: list[dict] | None = None
-    ) -> str:
-
+    history: list[dict] | None = None,
+) -> str:
     """Generate an answer using semantically retrieved chunks as context.
 
     Args:
         question: User's question to answer.
         chunks: Relevant text chunks retrieved from ChromaDB.
+        history: Previous question/answer turns, oldest first.
 
     Returns:
         LLM-generated answer based solely on the provided chunks.
     """
     # Format chunks with numbering so LLM can reference them
     context = "\n\n---\n\n".join(
-       f"[Chunk {i + 1}]:\n{chunk['text']}" for i, chunk in enumerate(chunks)
+        f"[Chunk {i + 1}]:\n{chunk['text']}" for i, chunk in enumerate(chunks)
     )
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -50,30 +44,3 @@ def answer_question_with_context(
         messages=messages,
     )
     return response.choices[0].message.content
-
-
-_EMBED_BATCH_SIZE = 100
-def embed_texts(texts: list[str]) -> list[list[float]]:
-    """Embed many texts in as few API calls as possible.
-
-    Returns embeddings in the same order as the input texts.
-    """
-    if not texts:
-        return []
-
-    embeddings: list[list[float]] = []
-    for start in range(0, len(texts), _EMBED_BATCH_SIZE):
-        batch = texts[start : start + _EMBED_BATCH_SIZE]
-        response = client.embeddings.create(
-            model="text-embedding-3-small",
-            input=batch,
-        )        
-        ordered = sorted(response.data, key=lambda item: item.index)
-        embeddings.extend(item.embedding for item in ordered)
-
-    return embeddings
-
-
-def embed_text(text: str) -> list[float]:
-    """Convert a single text into a 1536-dimensional embedding vector."""
-    return embed_texts([text])[0]

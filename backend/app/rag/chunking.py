@@ -1,6 +1,6 @@
 import re
 
-from app.services import ai
+from app.rag.embeddings import embed_texts
 import numpy as np
 
 def sigmoid(x: float) -> float:
@@ -60,7 +60,7 @@ def _chunk_by_semantic_maxmin(text: str,
     if not sentences:
         return []
 
-    embeddings = ai.embed_texts(sentences)
+    embeddings = embed_texts(sentences)
 
     chunks = []
     current_sentences = [sentences[0]]

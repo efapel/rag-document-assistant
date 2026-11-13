@@ -1,5 +1,5 @@
 import chromadb
-from app.services import ai
+from app.rag.embeddings import embed_text
 
 
 _collection = None
@@ -20,7 +20,7 @@ def add_document_chunks(document_id: int, chunks: list[str]) -> None:
     """Embed and store a document's chunks in ChromaDB."""
     collection = get_collection()
 
-    embeddings = [ai.embed_text(chunk) for chunk in chunks]
+    embeddings = [embed_text(chunk) for chunk in chunks]
     ids = [f"{document_id}_{i}" for i in range(len(chunks))]
     metadatas = [{"document_id": document_id, "chunk_index": i} for i in range(len(chunks))]
 
@@ -52,7 +52,7 @@ def query_similar_chunks(document_id: int, question: str, top_k: int = 5) -> lis
         return []
 
     actual_top_k = min(top_k, n_chunks)
-    question_embedding = ai.embed_text(question)
+    question_embedding = embed_text(question)
 
     results = collection.query(
         query_embeddings=[question_embedding],
