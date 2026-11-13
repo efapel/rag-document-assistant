@@ -16,7 +16,7 @@ grounds answers in specific passages rather than the full text.
 ## Features
 
 - PDF upload with automatic text extraction (PyMuPDF)
-- Sentence-based chunking (keeps chunks on sentence boundaries)
+- Semantic chunking (groups consecutive sentences by embedding similarity); sentence- and character-based strategies also available
 - Semantic retrieval over ChromaDB using cosine similarity
 - Answers cite their source chunks, each with a similarity score
 - Full document text stored in PostgreSQL; chunk embeddings in ChromaDB
@@ -34,20 +34,22 @@ grounds answers in specific passages rather than the full text.
 Requires Python 3.13+, a PostgreSQL database, and an OpenAI API key.
 
 ```bash
-# 1. Clone and enter the backend
-cd academiq/backend
+# 1. Clone the repo
+cd academiq
 
-# 2. Create and activate a virtual environment
+# 2. Create and activate a virtual environment (at the repo root)
 python -m venv venv
 venv\Scripts\activate        # Windows
 # source venv/bin/activate   # macOS/Linux
 
-# 3. Install dependencies
+# 3. Install dependencies (run the remaining steps from backend/)
+cd backend
 pip install -r requirements.txt
+# optional, only for experiments/: pip install -r experiments/requirements.txt
 
 # 4. Configure environment
 cp .env.example .env
-# then edit .env with your DATABASE_URL and OPENAI_API_KEY
+# then edit .env with your DATABASE_URL, OPENAI_API_KEY and JWT_SECRET_KEY
 
 # 5. Run the server
 uvicorn app.main:app --reload
@@ -60,6 +62,8 @@ The API is now at `http://localhost:8000`. Interactive docs at `http://localhost
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET    | `/health` | Health check |
+| POST   | `/register` | Create a user account |
+| POST   | `/login` | Get a JWT bearer token (form data: `username` = email, `password`) |
 | POST   | `/documents/upload` | Upload a PDF; extracts, chunks, and embeds it |
 | POST   | `/documents` | Create a document from raw text |
 | GET    | `/documents` | List all documents |
@@ -67,6 +71,8 @@ The API is now at `http://localhost:8000`. Interactive docs at `http://localhost
 | DELETE | `/documents/{id}` | Delete a document and its chunks |
 | POST   | `/ask` | Ask a question about a document |
 
+All endpoints except `/health`, `/register` and `/login` require an
+`Authorization: Bearer <token>` header, and users only see their own documents.
 Full request/response schemas are available in the interactive docs at `/docs`.
 
 ### Example: asking a question
