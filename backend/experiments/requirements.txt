@@ -1,0 +1,7 @@
+# Only for experiments/langchain_chain.py — not used by the app.
+-r ../requirements.txt
+langchain==1.3.11
+langchain-core==1.4.8
+langchain-classic==1.0.8
+langchain-openai==1.3.3
+langchain-chroma==1.1.0
