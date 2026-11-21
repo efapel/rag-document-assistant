@@ -127,7 +127,7 @@ def chunk_text(text: str, strategy: str = "semantic_maxmin") -> list[str]:
 
     Args:
         text: Raw document text to split.
-        strategy: Chunking method — 'sentence' or 'char'.
+        strategy: Chunking method — 'semantic_maxmin' (default), 'sentence' or 'char'.
 
     Returns:
         List of text chunks ready for embedding.
